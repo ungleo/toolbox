@@ -1,3 +1,11 @@
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import roc_curve
+from sklearn.metrics import mean_squared_log_error
+from sklearn.metrics import roc_auc_score
+from sklearn import metrics
+
 # KS- table, para cada punto de corte las metricas
 
 def ks_table(df_ks,target='target', prob='prob',decimal=2):
