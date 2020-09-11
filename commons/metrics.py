@@ -7,9 +7,21 @@ from sklearn.metrics import roc_auc_score
 from sklearn import metrics
 import pandas as pd
 import numpy as np
-# KS- table, para cada punto de corte las metricas
 
+
+# KS- table, para cada punto de corte las metricas
 def ks_table(X_test,y_test,model_name, target='target', prob='prob',decimal=2):
+    """Genera una tabla con el k-s ,  precision , recall y f1-score para los distintos puntos de corte
+        Args:
+            X_test (df): df to predict
+            y_test (array): valor real de Y
+            model_name : modelo para hacer la prediccion
+            target (string): nombre del target
+            decimal (int): cantidad de decimales para mostrar en la tabla
+        Returns:
+           df: devuelve una tabla con el k-s ,  precision , recall y f1-score para los distintos puntos de corte
+
+    """
     df_ks = pd.DataFrame(y_test)
     df_ks['pred']=model_name.predict(X_test)
     df_ks['target0'] = 1 - df_ks['target']
@@ -32,6 +44,7 @@ def ks_table(X_test,y_test,model_name, target='target', prob='prob',decimal=2):
     kstable['FP'] = kstable.nonevents.cumsum()
     kstable['TN'] =  df_ks['target0'].sum() - kstable.nonevents.cumsum()
     kstable['FN'] =  df_ks[target].sum() - kstable.events.cumsum()
+    
     # precision = TP/(TP + FP)
     kstable['Precision_(1)'] = round(kstable['TP'] / (kstable['TP'] + kstable['FP'] ),2)
     # recall = TP / (TP + FN)
@@ -90,6 +103,9 @@ def best_cutoff(y_test, y_pred_prob, model_id):
     return max_ks, cutoff
 
 def obtain_metrics(y_pred_prob, y_test, cutoff, max_ks):
+    """
+    Genera las metricas para un punto de corte puntual
+    """
     y_pred = y_pred_prob >= cutoff
     accuracy = sklm.accuracy_score(y_test, y_pred)
 
@@ -168,10 +184,20 @@ def get_importance_df(df_x,y,modelo):
     return imp_df
 
 # tabla con cuantiles por score
-
 def quantile_table(X_test,y_test,model_name, target='target', prob='pred',n_quantile=10):
+    """Genera una tabla con la distribucion de target por cuantiles
+        Args:
+            X_test (df): df to predict
+            y_test (array): valor real de Y
+            model_name : modelo para hacer la prediccion
+            target (string): nombre del target
+            decimal (int): cantidad de decimales para mostrar en la tabla
+        Returns:
+           df
+
+    """
     df_pred_y = pd.DataFrame(y_test)
-    df_pred_y[prob]=gbm.predict(X_test)
+    df_pred_y[prob]=model_name.predict(X_test)
     df_pred_y['target0'] = 1 - df_pred_y[target]
     df_pred_y['bucket'] = pd.qcut(df_pred_y[prob],n_quantile, labels = False)
     grouped = df_pred_y.groupby('bucket', as_index = False)
