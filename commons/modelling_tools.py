@@ -1,5 +1,5 @@
+import numpy as np
 # limpiar data set
-
 def clean_dataset(df, categorical_cols = None,canary=0, vars_to_drop=None):
     
     if vars_to_drop!=None:
@@ -24,7 +24,7 @@ def clean_dataset(df, categorical_cols = None,canary=0, vars_to_drop=None):
     #df['device_name'] = df['device_name'].map(lambda x : clean_text(x))
     #Excluyo el target para que no aplique transf. log
 
-    df[cols_num] = df[cols_num].applymap(lambda x: np.log1p(x))
+    #df[cols_num] = df[cols_num].applymap(lambda x: np.log1p(x))
     if canary>0:
         print('canary features')
         for c in range(1,canary):
@@ -39,6 +39,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.impute import SimpleImputer
 from bayes_opt import BayesianOptimization
 import lightgbm as lgb
+
 def bayes_parameter_opt_lgb(train_x, train_y, valid_x, valid_y, init_round=15, opt_round=25, n_folds=5, random_seed=6, n_estimators=100, output_process=False):
     
     # prepare data
@@ -47,7 +48,7 @@ def bayes_parameter_opt_lgb(train_x, train_y, valid_x, valid_y, init_round=15, o
     
     # parameters
     def lgb_eval(num_leaves, feature_fraction, bagging_fraction, max_depth, bagging_freq, lambda_l1, lambda_l2, min_split_gain, min_child_weight, learning_rate):
-        params = {'application':'binary', 'metric':'auc'}
+        params = {'application':'binary', 'metric':'auc','verbose': -1}
         params["learning_rate"] = learning_rate 
         params["num_leaves"] = int(round(num_leaves))
         params['feature_fraction'] = max(min(feature_fraction, 1), 0)
@@ -64,14 +65,14 @@ def bayes_parameter_opt_lgb(train_x, train_y, valid_x, valid_y, init_round=15, o
         return m.best_score['valid_1']['auc']
     
     # range 
-    lgbBO = BayesianOptimization(lgb_eval, {'num_leaves': (24, 45),
+    lgbBO = BayesianOptimization(lgb_eval, {'num_leaves': (10, 45),
                                             'feature_fraction': (0.1, 0.9),
                                             'bagging_fraction': (0.8, 1),
                                             'max_depth': (5, 8.99),
                                             'bagging_freq': (3, 8),
                                             'lambda_l1': (0, 5),
                                             'lambda_l2': (0, 3),
-                                            'learning_rate': (0.0001,0.1),
+                                            'learning_rate': (0.001,0.1),
                                             'min_split_gain': (0.001, 0.1),
                                             'min_child_weight': (5, 50)}, random_state=0)
     
@@ -89,4 +90,3 @@ def bayes_parameter_opt_lgb(train_x, train_y, valid_x, valid_y, init_round=15, o
     
     # return best parameters
     return params
-
