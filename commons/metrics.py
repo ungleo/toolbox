@@ -166,3 +166,30 @@ def get_importance_df(df_x,y,modelo):
     imp_df["importance_split"] = modelo.feature_importance(importance_type='split')
     imp_df['trn_score'] = roc_auc_score(y, modelo.predict(df_x))
     return imp_df
+
+# tabla con cuantiles por score
+
+def quantile_table(X_test,y_test,model_name, target='target', prob='pred',n_quantile=10):
+    df_pred_y = pd.DataFrame(y_test)
+    df_pred_y[prob]=gbm.predict(X_test)
+    df_pred_y['target0'] = 1 - df_pred_y[target]
+    df_pred_y['bucket'] = pd.qcut(df_pred_y[prob],n_quantile, labels = False)
+    grouped = df_pred_y.groupby('bucket', as_index = False)
+
+    table_group = pd.DataFrame()
+    table_group['prob_group'] =grouped.min()['bucket']
+    table_group['min_prob'] = grouped.min()[prob]
+    table_group['max_prob'] = grouped.max()[prob]
+    table_group['avg_prob'] = grouped.mean()[prob]
+    table_group['events']   = grouped.sum()[target]
+    table_group['nonevents'] = grouped.sum()['target0']
+    table_group['obs'] = grouped.sum()[target] + grouped.sum()['target0']
+
+    table_group['prop_target'] = table_group['events'] / table_group['obs'] 
+    table_group = table_group.sort_values(by="min_prob", ascending=False).reset_index(drop = True)
+    table_group['event_rate'] = (table_group.events / df_ks[target].sum()).apply('{0:.2%}'.format)
+    table_group['nonevent_rate'] = (table_group.nonevents / df_ks['target0'].sum()).apply('{0:.2%}'.format)
+    table_group['cum_eventrate']=(table_group.events / df_ks[target].sum()).cumsum()
+    table_group['cum_noneventrate']=(table_group.nonevents / df_ks['target0'].sum()).cumsum()
+    table_group['KS'] = np.round(table_group['cum_eventrate']-table_group['cum_noneventrate'], 3) * 100
+    return table_group
