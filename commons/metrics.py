@@ -5,10 +5,13 @@ from sklearn.metrics import roc_curve
 from sklearn.metrics import mean_squared_log_error
 from sklearn.metrics import roc_auc_score
 from sklearn import metrics
-
+import pandas as pd
+import numpy as np
 # KS- table, para cada punto de corte las metricas
 
-def ks_table(df_ks,target='target', prob='prob',decimal=2):
+def ks_table(X_test,y_test,model_name, target='target', prob='prob',decimal=2):
+    df_ks = pd.DataFrame(y_test)
+    df_ks['pred']=model_name.predict(X_test)
     df_ks['target0'] = 1 - df_ks['target']
     df_ks['bucket'] = df_ks['pred'].apply(lambda x: int(x*10**decimal)/(10**decimal) )
     grouped = df_ks.groupby('bucket', as_index = False)
@@ -61,7 +64,7 @@ def pc_curve(labels,preds):
     pyplot.legend()
     # show the plot
     pyplot.show()
-  
+
 # mejor cut off
 def best_cutoff(y_test, y_pred_prob, model_id):
     print('Best cutoff..')
@@ -163,4 +166,3 @@ def get_importance_df(df_x,y,modelo):
     imp_df["importance_split"] = modelo.feature_importance(importance_type='split')
     imp_df['trn_score'] = roc_auc_score(y, modelo.predict(df_x))
     return imp_df
-   
