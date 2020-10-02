@@ -4,46 +4,45 @@ from sklearn.metrics import confusion_matrix
 from sklearn.metrics import roc_curve
 from sklearn.metrics import mean_squared_log_error
 from sklearn.metrics import roc_auc_score
-from sklearn import metrics
+import sklearn.metrics as sklm
+import seaborn as sns
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-
 # KS- table, para cada punto de corte las metricas
-def ks_table(X_test,y_test,model_name, target='target', prob='prob',decimal=2):
+def ks_table(y_test,y_pred,decimal=2):
     """Genera una tabla con el k-s ,  precision , recall y f1-score para los distintos puntos de corte
         Args:
-            X_test (df): df to predict
             y_test (array): valor real de Y
-            model_name : modelo para hacer la prediccion
-            target (string): nombre del target
+            y_pred (array): prediccion del modelo
             decimal (int): cantidad de decimales para mostrar en la tabla
         Returns:
            df: devuelve una tabla con el k-s ,  precision , recall y f1-score para los distintos puntos de corte
-
     """
     df_ks = pd.DataFrame(y_test)
-    df_ks['pred']=model_name.predict(X_test)
+    df_ks.columns=['target'] # rename de la columna para luego poder llamarla
+    df_ks['pred']= y_pred
     df_ks['target0'] = 1 - df_ks['target']
     df_ks['bucket'] = df_ks['pred'].apply(lambda x: int(x*10**decimal)/(10**decimal) )
     grouped = df_ks.groupby('bucket', as_index = False)
 
     kstable = pd.DataFrame()
     kstable['prob_group'] =grouped.min()['bucket']
-    kstable['min_prob'] = grouped.min()[prob]
-    kstable['max_prob'] = grouped.max()[prob]
-    kstable['events']   = grouped.sum()[target]
+    kstable['min_prob'] = grouped.min()['pred']
+    kstable['max_prob'] = grouped.max()['pred']
+    kstable['events']   = grouped.sum()['target']
     kstable['nonevents'] = grouped.sum()['target0']
     kstable = kstable.sort_values(by="min_prob", ascending=False).reset_index(drop = True)
-    kstable['event_rate'] = (kstable.events / df_ks[target].sum()).apply('{0:.2%}'.format)
+    kstable['event_rate'] = (kstable.events / df_ks['target'].sum()).apply('{0:.2%}'.format)
     kstable['nonevent_rate'] = (kstable.nonevents / df_ks['target0'].sum()).apply('{0:.2%}'.format)
-    kstable['cum_eventrate']=(kstable.events / df_ks[target].sum()).cumsum()
+    kstable['cum_eventrate']=(kstable.events / df_ks['target'].sum()).cumsum()
     kstable['cum_noneventrate']=(kstable.nonevents / df_ks['target0'].sum()).cumsum()
     
     kstable['TP'] = kstable.events.cumsum()
     kstable['FP'] = kstable.nonevents.cumsum()
     kstable['TN'] =  df_ks['target0'].sum() - kstable.nonevents.cumsum()
-    kstable['FN'] =  df_ks[target].sum() - kstable.events.cumsum()
+    kstable['FN'] =  df_ks['target'].sum() - kstable.events.cumsum()
     
     # precision = TP/(TP + FP)
     kstable['Precision_(1)'] = round(kstable['TP'] / (kstable['TP'] + kstable['FP'] ),2)
@@ -64,19 +63,19 @@ def ks_table(X_test,y_test,model_name, target='target', prob='prob',decimal=2):
     return kstable
     
 # plot del ks
-import sklearn.metrics as skl
-from matplotlib import pyplot
+
+
 
 def pc_curve(labels,preds):
-    precision, recall, thresholds = skl.precision_recall_curve(labels, preds)
-    pyplot.plot(recall, precision, marker='.', label='model')
+    precision, recall, thresholds = sklm.precision_recall_curve(labels, preds)
+    plt.plot(recall, precision, marker='.', label='model')
     # axis labels
-    pyplot.xlabel('Recall')
-    pyplot.ylabel('Precision')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
     # show the legend
-    pyplot.legend()
+    plt.legend()
     # show the plot
-    pyplot.show()
+    plt.show()
 
 # mejor cut off
 def best_cutoff(y_test, y_pred_prob, model_id):
@@ -184,38 +183,36 @@ def get_importance_df(df_x,y,modelo):
     return imp_df
 
 # tabla con cuantiles por score
-def quantile_table(X_test,y_test,model_name, target='target', prob='pred',n_quantile=10):
+def quantile_table(y_test,y_pred,n_quantile=10):
     """Genera una tabla con la distribucion de target por cuantiles
         Args:
-            X_test (df): df to predict
             y_test (array): valor real de Y
-            model_name : modelo para hacer la prediccion
-            target (string): nombre del target
+            y_pred (array): prediccion del modelo
             decimal (int): cantidad de decimales para mostrar en la tabla
         Returns:
            df
-
     """
     df_pred_y = pd.DataFrame(y_test)
-    df_pred_y[prob]=model_name.predict(X_test)
-    df_pred_y['target0'] = 1 - df_pred_y[target]
-    df_pred_y['bucket'] = pd.qcut(df_pred_y[prob],n_quantile, labels = False)
+    df_pred_y.columns=['target'] # rename de la columna para luego poder llamarla
+    df_pred_y['pred']= y_pred
+    df_pred_y['target0'] = 1 - df_pred_y['target']
+    df_pred_y['bucket'] = pd.qcut(df_pred_y['pred'],n_quantile, labels = False)
     grouped = df_pred_y.groupby('bucket', as_index = False)
 
     table_group = pd.DataFrame()
     table_group['prob_group'] =grouped.min()['bucket']
-    table_group['min_prob'] = grouped.min()[prob]
-    table_group['max_prob'] = grouped.max()[prob]
-    table_group['avg_prob'] = grouped.mean()[prob]
-    table_group['events']   = grouped.sum()[target]
+    table_group['min_prob'] = grouped.min()['pred']
+    table_group['max_prob'] = grouped.max()['pred']
+    table_group['avg_prob'] = grouped.mean()['pred']
+    table_group['events']   = grouped.sum()['target']
     table_group['nonevents'] = grouped.sum()['target0']
-    table_group['obs'] = grouped.sum()[target] + grouped.sum()['target0']
+    table_group['obs'] = grouped.sum()['target'] + grouped.sum()['target0']
 
     table_group['prop_target'] = table_group['events'] / table_group['obs'] 
     table_group = table_group.sort_values(by="min_prob", ascending=False).reset_index(drop = True)
-    table_group['event_rate'] = (table_group.events / df_ks[target].sum()).apply('{0:.2%}'.format)
-    table_group['nonevent_rate'] = (table_group.nonevents / df_ks['target0'].sum()).apply('{0:.2%}'.format)
-    table_group['cum_eventrate']=(table_group.events / df_ks[target].sum()).cumsum()
-    table_group['cum_noneventrate']=(table_group.nonevents / df_ks['target0'].sum()).cumsum()
+    table_group['event_rate'] = (table_group.events / df_pred_y['target'].sum()).apply('{0:.2%}'.format)
+    table_group['nonevent_rate'] = (table_group.nonevents / df_pred_y['target0'].sum()).apply('{0:.2%}'.format)
+    table_group['cum_eventrate']=(table_group.events / df_pred_y['target'].sum()).cumsum()
+    table_group['cum_noneventrate']=(table_group.nonevents / df_pred_y['target0'].sum()).cumsum()
     table_group['KS'] = np.round(table_group['cum_eventrate']-table_group['cum_noneventrate'], 3) * 100
     return table_group
